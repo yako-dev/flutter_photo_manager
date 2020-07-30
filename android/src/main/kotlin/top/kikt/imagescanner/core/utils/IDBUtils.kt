@@ -346,4 +346,6 @@ interface IDBUtils {
   }
 
   fun removeAllExistsAssets(context: Context): Boolean
+
+  data class ExifInfo(val degree:Int,val latlng: DoubleArray)
 }

@@ -303,23 +303,16 @@ object DBUtils : IDBUtils {
       inputStream = ByteArrayInputStream(image)
     }
 
-
-    val latLong = kotlin.run {
+    val exifInfo = kotlin.run {
       val exifInterface = try {
         ExifInterface(ByteArrayInputStream(image))
       } catch (e: Exception) {
-        return@run doubleArrayOf(0.0, 0.0)
+        return@run IDBUtils.ExifInfo(0, doubleArrayOf(0.0, 0.0))
       }
-      exifInterface.latLong ?: doubleArrayOf(0.0, 0.0)
+      IDBUtils.ExifInfo(exifInterface.rotationDegrees, exifInterface.latLong
+              ?: doubleArrayOf(0.0, 0.0))
     }
 
-    val degrees =
-            try {
-              val exifInterface = ExifInterface(inputStream)
-              exifInterface.rotationDegrees
-            } catch (e: Exception) {
-              0
-            }
     refreshInputStream()
     val bmp = BitmapFactory.decodeStream(inputStream)
     val width = bmp.width
@@ -344,9 +337,9 @@ object DBUtils : IDBUtils {
       put(MediaStore.Images.ImageColumns.DISPLAY_NAME, title)
       put(MediaStore.Images.ImageColumns.WIDTH, width)
       put(MediaStore.Images.ImageColumns.HEIGHT, height)
-      put(MediaStore.Images.ImageColumns.LATITUDE, latLong[0])
-      put(MediaStore.Images.ImageColumns.LONGITUDE, latLong[1])
-      put(MediaStore.Images.ImageColumns.ORIENTATION, degrees)
+      put(MediaStore.Images.ImageColumns.LATITUDE, exifInfo.latlng[0])
+      put(MediaStore.Images.ImageColumns.LONGITUDE, exifInfo.latlng[1])
+      put(MediaStore.Images.ImageColumns.ORIENTATION, exifInfo.degree)
     }
 
     val insertUri = cr.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return null
@@ -377,15 +370,15 @@ object DBUtils : IDBUtils {
     val cr = context.contentResolver
     val timestamp = System.currentTimeMillis() / 1000
 
-    val latLong = kotlin.run {
+    val exifInfo = kotlin.run {
       val exifInterface = try {
         ExifInterface(path)
       } catch (e: Exception) {
-        return@run doubleArrayOf(0.0, 0.0)
+        return@run IDBUtils.ExifInfo(0, doubleArrayOf(0.0, 0.0))
       }
-      exifInterface.latLong ?: doubleArrayOf(0.0, 0.0)
+      IDBUtils.ExifInfo(exifInterface.rotationDegrees, exifInterface.latLong
+              ?: doubleArrayOf(0.0, 0.0))
     }
-
 
     val (width, height) =
             try {
@@ -415,8 +408,9 @@ object DBUtils : IDBUtils {
       put(MediaStore.Images.ImageColumns.DATE_MODIFIED, timestamp)
       put(MediaStore.Images.ImageColumns.DATE_TAKEN, timestamp * 1000)
       put(MediaStore.Images.ImageColumns.DISPLAY_NAME, title)
-      put(MediaStore.Images.ImageColumns.LATITUDE, latLong[0])
-      put(MediaStore.Images.ImageColumns.LONGITUDE, latLong[1])
+      put(MediaStore.Images.ImageColumns.LATITUDE, exifInfo.latlng[0])
+      put(MediaStore.Images.ImageColumns.LONGITUDE, exifInfo.latlng[1])
+      put(MediaStore.Images.ImageColumns.ORIENTATION, exifInfo.degree)
       put(MediaStore.Images.ImageColumns.WIDTH, width)
       put(MediaStore.Images.ImageColumns.HEIGHT, height)
 
@@ -731,3 +725,4 @@ object DBUtils : IDBUtils {
 
   private data class GalleryInfo(val path: String, val galleryId: String, val galleryName: String)
 }
+
