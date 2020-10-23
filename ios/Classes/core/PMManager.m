@@ -512,9 +512,9 @@
   [options setNetworkAccessAllowed:YES];
   [options setProgressHandler:^(double progress, NSError *error, BOOL *stop,
           NSDictionary *info) {
-      if (progress == 1.0) {
-        [self fetchFullSizeImageFile:asset resultHandler:handler];
-      }
+        if ([handler isReplied]) {
+            return;
+        }
   }];
 
   [manager requestImageForAsset:asset
