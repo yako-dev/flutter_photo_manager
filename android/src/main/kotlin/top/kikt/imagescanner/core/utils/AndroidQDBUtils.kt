@@ -61,6 +61,8 @@ object AndroidQDBUtils : IDBUtils {
     val cursor = context.contentResolver.query(allUri, galleryKeys, selections, args.toTypedArray(), null)
             ?: return list
 
+    LogUtils.logCursor(cursor)
+
     val nameMap = HashMap<String, String>()
     val countMap = HashMap<String, Int>()
 
@@ -300,9 +302,19 @@ object AndroidQDBUtils : IDBUtils {
     cacheContainer.clearCache()
   }
 
+  override fun clearFileCache(context: Context) {
+    androidQCache.clearAllCache(context)
+  }
+
   override fun getFilePath(context: Context, id: String, origin: Boolean): String? {
     val assetEntity = getAssetEntity(context, id) ?: return null
-    val cacheFile = androidQCache.getCacheFile(context, id, assetEntity.displayName, assetEntity.type, origin) ?: return null
+
+    if (useFilePath()) {
+      return assetEntity.path
+    }
+
+    val cacheFile = androidQCache.getCacheFile(context, id, assetEntity.displayName, assetEntity.type, origin)
+            ?: return null
     return cacheFile.path
   }
 

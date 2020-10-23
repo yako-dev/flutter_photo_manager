@@ -12,17 +12,16 @@ import java.io.File
 import java.io.FileOutputStream
 
 /// create 2019-09-10 by cai
-
 @RequiresApi(Build.VERSION_CODES.Q)
 class AndroidQCache {
 
   fun getCacheFile(context: Context, id: String, displayName: String, isOrigin: Boolean): File {
     val originString =
-      if (isOrigin) {
-        "_origin"
-      } else {
-        ""
-      }
+            if (isOrigin) {
+              "_origin"
+            } else {
+              ""
+            }
     val name = "$id${originString}_${displayName}"
     return File(context.cacheDir, name)
   }
@@ -36,8 +35,8 @@ class AndroidQCache {
 
     val contentResolver = context.contentResolver
 
-    var uri = AndroidQDBUtils.getUri(assetId,type, isOrigin)
-    if (uri == Uri.EMPTY){
+    var uri = AndroidQDBUtils.getUri(assetId, type, isOrigin)
+    if (uri == Uri.EMPTY) {
       return null
     }
     if (isOrigin) {
@@ -64,5 +63,14 @@ class AndroidQCache {
     file.writeBytes(byteArray)
 
     LogUtils.info("${asset.id} , isOrigin: $isOrigin, cached")
+  }
+
+  fun clearAllCache(context: Context) {
+    val files = context.cacheDir
+            ?.listFiles()
+            ?.filterNotNull() ?: return
+    for (file in files) {
+      file.delete()
+    }
   }
 }

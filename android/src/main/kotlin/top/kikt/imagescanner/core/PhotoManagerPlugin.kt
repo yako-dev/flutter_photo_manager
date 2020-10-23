@@ -5,12 +5,16 @@ import android.app.Activity
 import android.content.Context
 import android.os.Build
 import android.os.Handler
+import com.bumptech.glide.Glide
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import top.kikt.imagescanner.core.entity.AssetEntity
 import top.kikt.imagescanner.core.entity.FilterOption
+import top.kikt.imagescanner.core.entity.ThumbLoadOption
 import top.kikt.imagescanner.core.utils.ConvertUtils
+import top.kikt.imagescanner.core.utils.IDBUtils
+import top.kikt.imagescanner.core.utils.belowSdk
 import top.kikt.imagescanner.permission.PermissionsListener
 import top.kikt.imagescanner.permission.PermissionsUtils
 import top.kikt.imagescanner.util.LogUtils
@@ -21,12 +25,11 @@ import java.util.concurrent.TimeUnit
 
 /// create 2019-09-05 by cai
 
-
 class PhotoManagerPlugin(
-    private val applicationContext: Context,
-    private val messenger: BinaryMessenger,
-    var activity: Activity?,
-    private val permissionsUtils: PermissionsUtils
+        private val applicationContext: Context,
+        private val messenger: BinaryMessenger,
+        var activity: Activity?,
+        private val permissionsUtils: PermissionsUtils
 ) : MethodChannel.MethodCallHandler {
 
   val deleteManager = PhotoManagerDeleteManager(applicationContext, activity)
@@ -34,11 +37,11 @@ class PhotoManagerPlugin(
   companion object {
     private const val poolSize = 8
     private val threadPool: ThreadPoolExecutor = ThreadPoolExecutor(
-        poolSize + 3,
-        1000,
-        200,
-        TimeUnit.MINUTES,
-        ArrayBlockingQueue<Runnable>(poolSize + 3)
+            poolSize + 3,
+            1000,
+            200,
+            TimeUnit.MINUTES,
+            ArrayBlockingQueue<Runnable>(poolSize + 3)
     )
 
     fun runOnBackground(runnable: () -> Unit) {
@@ -63,22 +66,42 @@ class PhotoManagerPlugin(
 
   private val photoManager = PhotoManager(applicationContext)
 
+  private var ignorePermissionCheck = false;
+
   override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-    val resultHandler = ResultHandler(result)
+    val resultHandler = ResultHandler(result, call)
+
+    if (call.method == "ignorePermissionCheck") {
+      val ignore = call.argument<Boolean>("ignore")!!
+      ignorePermissionCheck = ignore
+      resultHandler.reply(ignore)
+      return
+    }
 
     var needLocationPermissions = false
 
     val handleResult = when (call.method) {
       "releaseMemCache" -> {
         photoManager.clearCache()
+        resultHandler.reply(1)
         true
       }
       "log" -> {
         LogUtils.isLog = call.arguments()
+        resultHandler.reply(1)
         true
       }
       "openSetting" -> {
         permissionsUtils.getAppDetailSettingIntent(activity)
+        resultHandler.reply(1)
+        true
+      }
+      "clearFileCache" -> {
+        Glide.get(applicationContext).clearMemory()
+        runOnBackground {
+          photoManager.clearFileCache()
+          resultHandler.reply(1)
+        }
         true
       }
       "forceOldApi" -> {
@@ -126,6 +149,11 @@ class PhotoManagerPlugin(
       return
     }
 
+    if (ignorePermissionCheck) {
+      onHandlePermissionResult(call, resultHandler, true)
+      return
+    }
+
     val utils = permissionsUtils.apply {
       withActivity(activity)
       permissionsListener = object : PermissionsListener {
@@ -135,6 +163,7 @@ class PhotoManagerPlugin(
             resultHandler.reply(0)
           } else {
             if (grantedPermissions.containsAll(arrayListOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE))) {
+              LogUtils.info("onGranted call.method = ${call.method}")
               onHandlePermissionResult(call, resultHandler, false)
             } else {
               replyPermissionError(resultHandler)
@@ -143,6 +172,7 @@ class PhotoManagerPlugin(
         }
 
         override fun onGranted() {
+          LogUtils.info("onGranted call.method = ${call.method}")
           onHandlePermissionResult(call, resultHandler, true)
         }
       }
@@ -162,7 +192,6 @@ class PhotoManagerPlugin(
   }
 
   private fun onHandlePermissionResult(call: MethodCall, resultHandler: ResultHandler, haveLocationPermission: Boolean) {
-    LogUtils.info("onGranted call.method = ${call.method}")
     when (call.method) {
       "requestPermission" -> resultHandler.reply(1)
       "getGalleryList" -> {
@@ -207,11 +236,9 @@ class PhotoManagerPlugin(
       "getThumb" -> {
         runOnBackground {
           val id = call.argument<String>("id")!!
-          val width = call.argument<Int>("width")!!
-          val height = call.argument<Int>("height")!!
-          val format = call.argument<Int>("format")!!
-          val quality = call.argument<Int>("quality")!!
-          photoManager.getThumb(id, width, height, format, quality, resultHandler)
+          val optionMap = call.argument<Map<*, *>>("option")!!
+          val option = ThumbLoadOption.fromMap(optionMap)
+          photoManager.getThumb(id, option, resultHandler)
         }
       }
       "assetExists" -> {
@@ -289,11 +316,25 @@ class PhotoManagerPlugin(
       "deleteWithIds" -> {
         runOnBackground {
           val ids = call.argument<List<String>>("ids")!!
-          for (id in ids) {
-            val uri = photoManager.getUri(id)
-            if (uri != null) {
-              deleteManager.deleteWithUri(uri, false)
+          if (belowSdk(29)) {
+            deleteManager.deleteInApi28(ids)
+            resultHandler.reply(true)
+          } else if (IDBUtils.isAndroidR) {
+            val uris = ids.map {
+              photoManager.getUri(it)
+            }.toList()
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+              deleteManager.deleteInApi30(uris, resultHandler)
             }
+          } else {
+            val uris = ids.mapNotNull { photoManager.getUri(it) }
+//            for (id in ids) {
+//              val uri = photoManager.getUri(id)
+//              if (uri != null) {
+//                deleteManager.deleteWithUriInApi29(uri, false)
+//              }
+//            }
+            deleteManager.deleteWithUriInApi29(ids, uris, resultHandler, false)
           }
         }
       }

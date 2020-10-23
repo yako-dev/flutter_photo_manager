@@ -12,6 +12,7 @@ import android.provider.BaseColumns._ID
 import android.provider.MediaStore
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
+import com.bumptech.glide.Glide
 import top.kikt.imagescanner.core.PhotoManager
 import top.kikt.imagescanner.core.cache.CacheContainer
 import top.kikt.imagescanner.core.entity.AssetEntity

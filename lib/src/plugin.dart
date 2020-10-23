@@ -82,17 +82,11 @@ class Plugin with BasePlugin, IosPlugin, AndroidPlugin {
 
   Future<Uint8List> getThumb({
     @required String id,
-    int width = 100,
-    int height = 100,
-    ThumbFormat format,
-    int quality,
+    @required ThumbOption option,
   }) {
     return _channel.invokeMethod("getThumb", {
-      "width": width,
-      "height": height,
       "id": id,
-      "format": format.index,
-      "quality": quality,
+      "option": option.toMap(),
     });
   }
 
@@ -325,6 +319,14 @@ class Plugin with BasePlugin, IosPlugin, AndroidPlugin {
 
   Future getPropertiesFromAssetEntity(String id) async {
     return _channel.invokeMethod('getPropertiesFromAssetEntity', {"id": id});
+  }
+
+  Future ignorePermissionCheck(bool ignore) async {
+    await _channel.invokeMethod('ignorePermissionCheck', {'ignore': ignore});
+  }
+
+  Future clearFileCache() async {
+    await _channel.invokeMethod('clearFileCache');
   }
 }
 
