@@ -339,6 +339,11 @@
   [requestOptions setNetworkAccessAllowed:YES];
   [requestOptions setProgressHandler:^(double progress, NSError *error, BOOL *stop,
       NSDictionary *info) {
+      
+    if ([handler isReplied]) {
+        return;
+    }
+      
     if (progress == 1.0) {
       [self fetchThumb:asset option:option resultHandler:handler];
     }
@@ -465,6 +470,11 @@
 
   [options setProgressHandler:^(double progress, NSError *error, BOOL *stop,
           NSDictionary *info) {
+      
+      if ([handler isReplied]) {
+        return;
+      }
+      
       if (progress == 1.0) {
         [self fetchFullSizeVideo:asset handler:handler];
       }
