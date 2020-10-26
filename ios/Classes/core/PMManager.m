@@ -512,9 +512,7 @@
   [options setNetworkAccessAllowed:YES];
   [options setProgressHandler:^(double progress, NSError *error, BOOL *stop,
           NSDictionary *info) {
-        if ([handler isReplied]) {
-            return;
-        }
+          NSLog(@"%f", progress);
   }];
 
   [manager requestImageForAsset:asset
@@ -523,7 +521,7 @@
                         options:options
                   resultHandler:^(UIImage *_Nullable image,
                           NSDictionary *_Nullable info) {
-
+                      NSLog(@"response %@", info);
                       BOOL downloadFinished = [PMManager isDownloadFinish:info];
                       if (!downloadFinished) {
                         return;
