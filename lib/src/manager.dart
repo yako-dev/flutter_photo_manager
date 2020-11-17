@@ -13,6 +13,11 @@ class PhotoManager {
     return _plugin.requestPermission();
   }
 
+  /// Provide more information about the actual permission being granted.
+  /// This can account for the .limited permission in iOS 14.
+  static Future<PhotoPermission> requestPermissionExtended() async =>
+      _plugin.requestPermissionExtended();
+
   static Editor editor = Editor();
 
   /// get gallery list

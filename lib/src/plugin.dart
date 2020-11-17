@@ -44,7 +44,14 @@ class Plugin with BasePlugin, IosPlugin, AndroidPlugin {
 
   /// request permission.
   Future<bool> requestPermission() async {
-    return (await _channel.invokeMethod("requestPermission")) == 1;
+    final permission = await requestPermissionExtended();
+    return permission == PhotoPermission.full ||
+        permission == PhotoPermission.limited;
+  }
+
+  Future<PhotoPermission> requestPermissionExtended() async {
+    final permission = await _channel.invokeMethod("requestPermission");
+    return PhotoPermission.values[permission];
   }
 
   /// Use pagination to get album content.
